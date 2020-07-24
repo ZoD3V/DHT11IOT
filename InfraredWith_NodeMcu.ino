@@ -1,44 +1,47 @@
 #define BLYNK_PRINT Serial
 #include <ESP8266WiFi.h>
 #include <BlynkSimpleEsp8266.h>
-char auth[] = “1tFmB355B2MDUMsnMaqr2xJK2hJkiTyB”; //token dari Blynk Anda Saat Register
-char ssid[] = “zero”; //User hostspot dari hp nya masing masing
-char pass[] = “1234566”; //Password dari hostpot
-WidgetLED led1(V1);
-WidgetLED led2(V2);
-int sensor1 = D1;
-int sensor2 = D2;
+#define trig D2
+#define echo D1
+long duration;
+int distance;
+// You should get Auth Token in the Blynk App.
+char auth[] = “CocqqvQPtWE5OctdBW431MuKiu_k4_8U”; // your token
+char ssid[] = “school”; // your ssid
+char pass[] = “12345678”; // your pass
+BlynkTimer timer;
 void setup()
 {
 // Debug console
+pinMode(trig, OUTPUT); // Sets the trigPin as an Output
+pinMode(echo, INPUT); // Sets the echoPin as an Inpu
 Serial.begin(9600);
 Blynk.begin(auth, ssid, pass);
-pinMode(sensor2,INPUT);
-pinMode(sensor1,INPUT);
-while (Blynk.connect() == false) {
+// Setup a function to be called every second
+timer.setInterval(1000L, sendSensor);
 }
-}
-void loop() {
-int sensorval1 = digitalRead(sensor1);
-int sensorval2 = digitalRead(sensor2);
-Serial.println(sensorval1);
-Serial.println(sensorval2);
-delay(1000);
-if (sensorval1 == 1)
+void loop()
 {
-led1.on();
-}
-if (sensorval2 == 1)
-{
-led2.on();
-}
-if (sensorval1 == 0)
-{
-led1.off();
-}
-if (sensorval2 == 0)
-{
-led2.off();
-}
 Blynk.run();
+timer.run();
+}
+void sendSensor()
+{
+digitalWrite(trig, LOW); // Makes trigPin low
+delayMicroseconds(2); // 2 micro second delay
+digitalWrite(trig, HIGH); // tigPin high
+delayMicroseconds(10); // trigPin high for 10 micro seconds
+digitalWrite(trig, LOW); // trigPin low
+duration = pulseIn(echo, HIGH); //Read echo pin, time in microseconds
+distance = duration * 0.034 / 2; //Calculating actual/real distance
+Serial.print(“Distance = “); //Output distance on arduino serial monitor
+Serial.println(distance);
+
+if(distance <= 5)
+{
+Blynk.tweet(“My Arduino project is tweeting using @blynk_app and it’s awesome!\n #arduino #IoT #blynk”);
+Blynk.notify(“Post has been twitted”);
+}
+Blynk.virtualWrite(V0, distance);
+delay(1000); //Pause for 3 seconds and start measuring distance again
 }
