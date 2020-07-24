@@ -1,47 +1,72 @@
-#define BLYNK_PRINT Serial
-#include <ESP8266WiFi.h>
-#include <BlynkSimpleEsp8266.h>
-#define trig D2
-#define echo D1
-long duration;
-int distance;
-// You should get Auth Token in the Blynk App.
-char auth[] = “CocqqvQPtWE5OctdBW431MuKiu_k4_8U”; // your token
-char ssid[] = “school”; // your ssid
-char pass[] = “12345678”; // your pass
-BlynkTimer timer;
-void setup()
-{
-// Debug console
-pinMode(trig, OUTPUT); // Sets the trigPin as an Output
-pinMode(echo, INPUT); // Sets the echoPin as an Inpu
-Serial.begin(9600);
-Blynk.begin(auth, ssid, pass);
-// Setup a function to be called every second
-timer.setInterval(1000L, sendSensor);
+#include <EEPROM.h>
+#include <MFRC522.h>
+#include <SPI.h>
+#define SS_PIN D4
+#define RST_PIN D2
+#define RELAY_1 D1
+MFRC522 rfid(SS_PIN, RST_PIN);
+int F;
+void setup() {
+Serial.begin (9600);
+SPI.begin();
+rfid.PCD_Init();
+pinMode(RELAY_1, OUTPUT);
+digitalWrite(RELAY_1, LOW);
 }
-void loop()
+void loop() {
+F= digitalRead(RELAY_1);
+if(F == LOW) {
+//Mencari Kartu Baru
+if ( ! rfid.PICC_IsNewCardPresent())
 {
-Blynk.run();
-timer.run();
+return;
 }
-void sendSensor()
+//Memilih salah satu dari Kartu
+if ( ! rfid.PICC_ReadCardSerial())
 {
-digitalWrite(trig, LOW); // Makes trigPin low
-delayMicroseconds(2); // 2 micro second delay
-digitalWrite(trig, HIGH); // tigPin high
-delayMicroseconds(10); // trigPin high for 10 micro seconds
-digitalWrite(trig, LOW); // trigPin low
-duration = pulseIn(echo, HIGH); //Read echo pin, time in microseconds
-distance = duration * 0.034 / 2; //Calculating actual/real distance
-Serial.print(“Distance = “); //Output distance on arduino serial monitor
-Serial.println(distance);
-
-if(distance <= 5)
-{
-Blynk.tweet(“My Arduino project is tweeting using @blynk_app and it’s awesome!\n #arduino #IoT #blynk”);
-Blynk.notify(“Post has been twitted”);
+return;
 }
-Blynk.virtualWrite(V0, distance);
-delay(1000); //Pause for 3 seconds and start measuring distance again
+Serial.print(“UID tag :”);
+String content=””;
+byte letter;
+for (byte i = 0; i < rfid.uid.size; i++)
+{
+Serial.print(rfid.uid.uidByte[i] < 0x10 ? “0” : “ “);
+Serial.print(rfid.uid.uidByte[i], HEX);
+content.concat(String(rfid.uid.uidByte[i] < 0x10 ? “ 0” : “ “));
+content.concat(String(rfid.uid.uidByte[i],HEX));
+}
+Serial.println();
+Serial.print(“Message : “);
+content.toUpperCase();
+if (content.substring(1) == “87 20 50 2A”) //Ganti ID Di sini
+{
+Serial.println(“Lampu Nyala”);
+digitalWrite(RELAY_1, HIGH);
+delay (5000);
+}
+} else if (F == HIGH) {
+if ( ! rfid.PICC_ReadCardSerial()) {
+return;
+}
+Serial.print(“UID tag :”);
+String ID= “”;
+byte letter;
+for (byte i = 0; i < rfid.uid.size; i++)
+{
+Serial.print(rfid.uid.uidByte[i] < 0x10 ? “0” : “ “);
+Serial.print(rfid.uid.uidByte[i], HEX);
+ID.concat(String(rfid.uid.uidByte[i] < 0x10 ? “ 0” : “ “));
+ID.concat(String(rfid.uid.uidByte[i],HEX));
+}
+Serial.println();
+Serial.print(“Message : “);
+ID.toUpperCase();
+if (ID.substring(1) == “87 20 50 2A”) // Ganti ID di sini
+{
+Serial.println(“Lampu Mati”);
+digitalWrite(RELAY_1, LOW);
+delay (5000);
+}
+}
 }
