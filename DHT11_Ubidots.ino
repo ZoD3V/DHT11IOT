@@ -1,67 +1,26 @@
-
-#include <DHT.h>
-#include <ESP8266WiFi.h>
-
-#define DHTPIN D2
-#define DHTTYPE DHT11
-
-DHT dht(DHTPIN, DHTTYPE);
-WiFiClient client;
-
-String apiKey = "F76D9EP7MI4VXMPA";
-
-const char *ssid = "zero";
-const char *pass = "p3rm4t489";
-const char* server = "api.thingspeak.com";
-
-void setup(){
-  Serial.begin(115200);
-  delay(10);
-  dht.begin();
-Serial.println("Connecting to ");
-  Serial.println(ssid);
-WiFi.begin(ssid, pass);
-  while (WiFi.status() != WL_CONNECTED){
-    delay(500);
-    Serial.println(".");
-    }
-  Serial.println("");
-  Serial.println("WiFi connected");
+#include “DHT.h”
+#include “UbidotsMicroESP8266.h”
+#define DHTPIN 4//pin sensor DHT
+#define TOKEN “BBFF-afbeEG26W0j4QCDaIOzeWB7lsxF8GP” //token anda
+#define ssid “@wifi.id”
+#define psswd “252525251”
+DHT dht(DHTPIN,DHT11);
+Ubidots client(TOKEN);
+unsigned long last =0;
+void setup() {
+Serial.begin(9600);
+dht.begin();
+delay(20);
+client.wifiConnection(ssid,psswd); // klau ssid memakai pass
+// client.wifiConnection(ssid,NULL); // klau ssid tdk memakai pass
 }
-void loop()
-{ 
-  float h = dht.readHumidity();
-  float t = dht.readTemperature();
-  
-  if (isnan(h)||isnan(t)){
-      Serial.println("Failed to raed from DHT sensor!");
-      return;
-    }
-if(client.connect(server, 80)){
-    String postStr= apiKey;
-    postStr += "&field1=";
-    postStr += String(t);
-    postStr += "&field2=";
-    postStr += String(h);
-    postStr += "\r\n\r\n";
-client.print("POST /update HTTP/1.1\n");
-    client.print("Host: api.thingspeak.com\n");
-    client.print("Connection: close\n");
-    client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
-    client.print("Content-Type: application/x-www-form-urlencoded\n");
-    client.print("Content-Length: ");
-    client.print(postStr.length());
-    client.print("\n\n");
-    client.print(postStr);
-Serial.print("Temperature: ");
-    Serial.print(t);
-    Serial.print(" degrees Celcius, Humidity: ");
-    Serial.print(h);
-    Serial.print("%. Send to Thingspeak.");
-  }
-  
-  client.stop();
-  Serial.println("Waiting...");
-  delay(1000);
+void loop() {
+if(millis()-last>1000){
+float hum = dht.readHumidity();
+float temp = dht.readTemperature();
+last=millis();
+client.add(“kelembaban”,hum);
+client.add(“Temperature”,temp);
+client.sendAll(true);
 }
-view rawdhtthingspeak.ino hosted with ❤ by GitHub
+}
