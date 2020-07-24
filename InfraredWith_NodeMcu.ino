@@ -1,26 +1,44 @@
-#include “DHT.h”
-#include “UbidotsMicroESP8266.h”
-#define DHTPIN 4//pin sensor DHT
-#define TOKEN “BBFF-afbeEG26W0j4QCDaIOzeWB7lsxF8GP” //token anda
-#define ssid “@wifi.id”
-#define psswd “252525251”
-DHT dht(DHTPIN,DHT11);
-Ubidots client(TOKEN);
-unsigned long last =0;
-void setup() {
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+char auth[] = “1tFmB355B2MDUMsnMaqr2xJK2hJkiTyB”; //token dari Blynk Anda Saat Register
+char ssid[] = “zero”; //User hostspot dari hp nya masing masing
+char pass[] = “1234566”; //Password dari hostpot
+WidgetLED led1(V1);
+WidgetLED led2(V2);
+int sensor1 = D1;
+int sensor2 = D2;
+void setup()
+{
+// Debug console
 Serial.begin(9600);
-dht.begin();
-delay(20);
-client.wifiConnection(ssid,psswd); // klau ssid memakai pass
-// client.wifiConnection(ssid,NULL); // klau ssid tdk memakai pass
+Blynk.begin(auth, ssid, pass);
+pinMode(sensor2,INPUT);
+pinMode(sensor1,INPUT);
+while (Blynk.connect() == false) {
+}
 }
 void loop() {
-if(millis()-last>1000){
-float hum = dht.readHumidity();
-float temp = dht.readTemperature();
-last=millis();
-client.add(“kelembaban”,hum);
-client.add(“Temperature”,temp);
-client.sendAll(true);
+int sensorval1 = digitalRead(sensor1);
+int sensorval2 = digitalRead(sensor2);
+Serial.println(sensorval1);
+Serial.println(sensorval2);
+delay(1000);
+if (sensorval1 == 1)
+{
+led1.on();
 }
+if (sensorval2 == 1)
+{
+led2.on();
+}
+if (sensorval1 == 0)
+{
+led1.off();
+}
+if (sensorval2 == 0)
+{
+led2.off();
+}
+Blynk.run();
 }
