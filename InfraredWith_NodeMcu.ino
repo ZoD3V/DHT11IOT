@@ -1,72 +1,65 @@
-#include <EEPROM.h>
-#include <MFRC522.h>
-#include <SPI.h>
-#define SS_PIN D4
-#define RST_PIN D2
-#define RELAY_1 D1
-MFRC522 rfid(SS_PIN, RST_PIN);
-int F;
-void setup() {
-Serial.begin (9600);
-SPI.begin();
-rfid.PCD_Init();
-pinMode(RELAY_1, OUTPUT);
-digitalWrite(RELAY_1, LOW);
+#include <DHT.h>
+#include <ESP8266WiFi.h>
+
+#define DHTPIN D2
+#define DHTTYPE DHT11
+
+DHT dht(DHTPIN, DHTTYPE);
+WiFiClient client;
+
+String apiKey = "DLZHK7XKZFPEZK8O";//Api Key Kalian dari thingSpeak
+
+const char *ssid = "@wifi.id";
+const char *pass = "252525251";
+const char* server = "api.thingspeak.com";
+
+void setup(){
+  Serial.begin(115200);
+  delay(10);
+  dht.begin();
+Serial.println("Connecting to ");
+  Serial.println(ssid);
+WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED){
+    delay(500);
+    Serial.println(".");
+    }
+  Serial.println("");
+  Serial.println("WiFi connected");
 }
-void loop() {
-F= digitalRead(RELAY_1);
-if(F == LOW) {
-//Mencari Kartu Baru
-if ( ! rfid.PICC_IsNewCardPresent())
-{
-return;
-}
-//Memilih salah satu dari Kartu
-if ( ! rfid.PICC_ReadCardSerial())
-{
-return;
-}
-Serial.print(“UID tag :”);
-String content=””;
-byte letter;
-for (byte i = 0; i < rfid.uid.size; i++)
-{
-Serial.print(rfid.uid.uidByte[i] < 0x10 ? “0” : “ “);
-Serial.print(rfid.uid.uidByte[i], HEX);
-content.concat(String(rfid.uid.uidByte[i] < 0x10 ? “ 0” : “ “));
-content.concat(String(rfid.uid.uidByte[i],HEX));
-}
-Serial.println();
-Serial.print(“Message : “);
-content.toUpperCase();
-if (content.substring(1) == “87 20 50 2A”) //Ganti ID Di sini
-{
-Serial.println(“Lampu Nyala”);
-digitalWrite(RELAY_1, HIGH);
-delay (5000);
-}
-} else if (F == HIGH) {
-if ( ! rfid.PICC_ReadCardSerial()) {
-return;
-}
-Serial.print(“UID tag :”);
-String ID= “”;
-byte letter;
-for (byte i = 0; i < rfid.uid.size; i++)
-{
-Serial.print(rfid.uid.uidByte[i] < 0x10 ? “0” : “ “);
-Serial.print(rfid.uid.uidByte[i], HEX);
-ID.concat(String(rfid.uid.uidByte[i] < 0x10 ? “ 0” : “ “));
-ID.concat(String(rfid.uid.uidByte[i],HEX));
-}
-Serial.println();
-Serial.print(“Message : “);
-ID.toUpperCase();
-if (ID.substring(1) == “87 20 50 2A”) // Ganti ID di sini
-{
-Serial.println(“Lampu Mati”);
-digitalWrite(RELAY_1, LOW);
-delay (5000);
-}
-}
+void loop()
+{ 
+  float h = dht.readHumidity();
+  float t = dht.readTemperature();
+  
+  if (isnan(h)||isnan(t)){
+      Serial.println("Failed to raed from DHT sensor!");
+      return;
+    }
+if(client.connect(server, 80)){
+    String postStr= apiKey;
+    postStr += "&field1=";
+    postStr += String(t);
+    postStr += "&field2=";
+    postStr += String(h);
+    postStr += "\r\n\r\n";
+client.print("POST /update HTTP/1.1\n");
+    client.print("Host: api.thingspeak.com\n");
+    client.print("Connection: close\n");
+    client.print("X-THINGSPEAKAPIKEY: "+apiKey+"\n");
+    client.print("Content-Type: application/x-www-form-urlencoded\n");
+    client.print("Content-Length: ");
+    client.print(postStr.length());
+    client.print("\n\n");
+    client.print(postStr);
+Serial.print("Temperature: ");
+    Serial.print(t);
+    Serial.print(" degrees Celcius, Humidity: ");
+    Serial.print(h);
+    Serial.print("%. Send to Thingspeak.");
+  }
+  
+  client.stop();
+  Serial.println("Waiting...");
+  delay(1000);
 }
